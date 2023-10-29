@@ -14,8 +14,9 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
 
     public float movementSpeed = 1.0f;
     //Offset from camera if no objects exist
-    public float xOffset = 0.0f;
-    public float zOffset;
+    [SerializeField]
+    Vector3 positonOffsets = new Vector3(0.0f, 0.4f, 0.5f);
+    // Min distance task overview can be from camera
     public float minDistance = 0.1f;
 
     #region Delay Values
@@ -27,7 +28,6 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     //Vector3 LastPosition;
     //float CurrDelay;
     #endregion
-    public float heightOffset = 0.4f;
 
     Dictionary<string, GameObject> objsDict = new Dictionary<string, GameObject>();
     Dictionary<string, GameObject> linesDict = new Dictionary<string, GameObject>();
@@ -39,12 +39,13 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
 
     float timeStarted;
 
-    [SerializeField]
-    float distanceThreshold = 1.0f;
-    [SerializeField]
-    float distanceTimeThreshold = 5.0f;
+    // Specifies number of divisions on 360 degrees to specify for 
+    // rotation parameters. For example, if numDivisions = 20
+    // then we would have sections of 360/20 = 16 degrees
     [SerializeField]
     int numDivisions = 20;
+    // Threshold for how long a user can be in a different rotation
+    // section before overview snaps to new position
     [SerializeField]
     float rotationTimeThreshold = 5.0f;
     float divisionDifference;
@@ -64,20 +65,21 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     }*/
     #endregion
     //Function to have the task overview snap to the center of all required objects
-    //This is done when the recipe goes from one step to another. By default, the overview
-    //stays on the center of all required objects
+    //This is done when the user either rotates onto a new section or moves a distance
+    // beyond the distance threshold (and after their respectiev time thresholds have been
+    // exceeded)
     public void SnapToCentroid()
     {
-        Vector3 centroid = Camera.main.transform.position + Camera.main.transform.forward * zOffset + Camera.main.transform.right * xOffset;
-        Vector3 finalPos = new Vector3(centroid.x, Camera.main.transform.position.y + heightOffset, centroid.z);
+        Vector3 centroid = Camera.main.transform.position + Camera.main.transform.forward * positonOffsets.z + Camera.main.transform.right * positonOffsets.x;
+        Vector3 finalPos = new Vector3(centroid.x, Camera.main.transform.position.y + positonOffsets.y, centroid.z);
         float DistanceToCam = finalPos.GetDistanceToSpatialMap();
-        if(DistanceToCam > 0 && DistanceToCam < zOffset)
+        if(DistanceToCam > 0 && DistanceToCam < positonOffsets.z)
         {
             float currOffset = Mathf.Max(minDistance, DistanceToCam);
-            centroid = Camera.main.transform.position + Camera.main.transform.forward * currOffset + Camera.main.transform.right * xOffset;
-            finalPos = new Vector3(centroid.x, Camera.main.transform.position.y + heightOffset, centroid.z);
+            centroid = Camera.main.transform.position + Camera.main.transform.forward * currOffset + Camera.main.transform.right * positonOffsets.x;
+            finalPos = new Vector3(centroid.x, Camera.main.transform.position.y + positonOffsets.y, centroid.z);
         };
-        BeginLerp(this.transform.position, finalPos);
+        this.transform.position = finalPos;
     }
 
     void Start()
@@ -103,7 +105,7 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
             currBounds = newBounds;
             rotationTimer = 0.0f;
         }
-        if (currBounds == setBounds && dist < distanceThreshold)
+        if (currBounds == setBounds)
         {
             //ACTIVATE INDICATOR??
         }
@@ -115,20 +117,6 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
         {
             rotationTimer = 0.0f;
             setBounds = currBounds;
-            SnapToCentroid();
-        }
-        //MANAGING POSITION
-        if (dist >= distanceThreshold)
-        {
-            positionTimer += Time.deltaTime;
-        }
-        else
-        {
-            positionTimer = 0.0f;
-        }
-        if (positionTimer >= distanceTimeThreshold)
-        {
-            setPosition = Camera.main.transform.position;
             SnapToCentroid();
         }
     }
