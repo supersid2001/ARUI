@@ -25,6 +25,7 @@ public static class StringResources
     public static string Sid_Tasklist_path = "Prefabs/Sid_Tasklist/Task_Overview";
     public static string Sid_TaskListComponent_path = "Prefabs/Sid_Tasklist/Flashcards/TaskListComponent";
     public static string TaskOverview_template_path = "Prefabs/Sid_Tasklist/TaskOverview_template";
+    public static string TaskOverview_inidicator_path = "Prefabs/Sid_Tasklist/Overview_Indicator";
 
     //Textures
     public static string zBufferTexture_path = "Textures/zBuffer";

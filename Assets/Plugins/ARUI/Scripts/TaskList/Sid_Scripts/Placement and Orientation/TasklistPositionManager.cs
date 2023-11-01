@@ -9,7 +9,6 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     // Debug only
     public List<GameObject> objs;
 
-    public GameObject LinePrefab;
     private GameObject _listContainer;
 
     public float movementSpeed = 1.0f;
@@ -54,6 +53,9 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     Vector2 setBounds;
     float rotationTimer = 0.0f;
     float positionTimer = 0.0f;
+    GameObject _taskOverviewContainer;
+    bool canToggle = true;
+    GameObject _indicator;
 
     bool isLooking = false;
     #region Delay Code
@@ -70,6 +72,8 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     // exceeded)
     public void SnapToCentroid()
     {
+        canToggle = true;
+        ToggleIndicator(true);
         Vector3 centroid = Camera.main.transform.position + Camera.main.transform.forward * positonOffsets.z + Camera.main.transform.right * positonOffsets.x;
         Vector3 finalPos = new Vector3(centroid.x, Camera.main.transform.position.y + positonOffsets.y, centroid.z);
         float DistanceToCam = finalPos.GetDistanceToSpatialMap();
@@ -84,6 +88,9 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
 
     void Start()
     {
+        _indicator = Instantiate(Resources.Load(StringResources.TaskOverview_inidicator_path), 
+            Camera.main.transform) as GameObject;
+        _taskOverviewContainer = transform.GetChild(1).gameObject;
         divisionDifference = 360.0f / numDivisions;
         setBounds = new Vector2(0.0f, divisionDifference);
         setPosition = Camera.main.transform.position;
@@ -92,22 +99,35 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     // Update is called once per frame
     void Update()
     {
-        UnityEngine.Debug.Log("Current Rotation: " + setBounds);
-        UnityEngine.Debug.Log("Current Position: " + setPosition);
+        if(Utils.InFOV(transform.position, AngelARUI.Instance.ARCamera) || 
+            Utils.InFOV(_taskOverviewContainer.transform.position, AngelARUI.Instance.ARCamera))
+        {
+            ToggleIndicator(false);
+            canToggle = false;
+        }
+        //UnityEngine.Debug.Log("Current Rotation: " + setBounds);
+        //UnityEngine.Debug.Log("Current Position: " + setPosition);
         float dist = Vector3.Distance(Camera.main.transform.position, setPosition);
         //MANAGING ROTATION
         float currAngle = Clamp0360(Camera.main.transform.eulerAngles.y);
         float lowerBound = currAngle - (currAngle % divisionDifference);
         float upperBound = lowerBound + divisionDifference;
         Vector2 newBounds = new Vector2(lowerBound, upperBound);
+        //Getting angle between
+        Vector3 vectBetween = Vector3.Normalize(this.transform.position - Camera.main.transform.position);
+        vectBetween = new Vector3(vectBetween.x, Camera.main.transform.forward.y, vectBetween.z);
+        float angleBetweenCameraForward = Clamp0360(Vector3.Angle(Camera.main.transform.forward,vectBetween));
+        UnityEngine.Debug.Log("Angle between: " + angleBetweenCameraForward);
+        //End getting angle between
         if (currBounds != newBounds)
         {
+            ToggleIndicator(false);
             currBounds = newBounds;
             rotationTimer = 0.0f;
         }
         if (currBounds == setBounds)
         {
-            //ACTIVATE INDICATOR??
+            ToggleIndicator(true);
         }
         if (currBounds != setBounds)
         {
@@ -119,6 +139,8 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
             setBounds = currBounds;
             SnapToCentroid();
         }
+        //If angle between camera.forward vector and vector from camera to taskoverview is between 90 and 270
+        //and camera is facing same direction then increment curr_timer
     }
 
     //Source -> https://www.blueraja.com/blog/404/how-to-use-unity-3ds-linear-interpolation-vector3-lerp-correctly
@@ -152,6 +174,14 @@ public class TasklistPositionManager : Singleton<TasklistPositionManager>
     public void SetIsLooking(bool val)
     {
         isLooking = val;
+    }
+
+    void ToggleIndicator(bool val)
+    {
+        if (canToggle && _indicator)
+        {
+            _indicator.GetComponent<ActivateIndicator>().ToggleIndicator(val);
+        }
     }
 
     public float Clamp0360(float eulerAngles)
